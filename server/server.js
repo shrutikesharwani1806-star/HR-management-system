@@ -110,27 +110,21 @@ app.use(`${API}/notices`, protect, ensureTenantIsolation, attachScopeHelper, not
 
 const buildPath = path.resolve(__dirname, '../client/dist')
 //5. static file serving & SPA Routing
-if (process.env.NODE_ENV == 'production') {
-    //serve static files from the build directory
-    app.use(express.static(buildPath));
+//serve static files from the build directory
+app.use(express.static(buildPath));
 
-    // express v4 wildcard route
-    app.get('*', (req,res, next) => {
-        // Let API routes fall through to the JSON notFound error handler
-        if (req.path.startsWith('/api/') || req.path === '/health') return next();
-        
-        res.sendFile(path.join(buildPath, 'index.html'), (err) => {
-            if (err) {
-                //if index.html is missing, this provide a clearer error
-                res.status(500).send("Build file index.html not found. ensure you ran 'npm run build'")
-            }
-        })
-    })
-}else {
-    app.get("/", (req,res) => {
-        res.send("API is running... (Development Mode)");
-    })
-}
+// express v4 wildcard route
+app.get('*', (req, res, next) => {
+  // Let API routes fall through to the JSON notFound error handler
+  if (req.path.startsWith('/api/') || req.path === '/health') return next();
+
+  res.sendFile(path.join(buildPath, 'index.html'), (err) => {
+    if (err) {
+      //if index.html is missing, this provide a clearer error
+      res.status(500).send("Build file index.html not found. ensure you ran 'npm run build'")
+    }
+  })
+})
 
 // ─── Error Handling ────────────────────────────────────────────────────────
 app.use(notFound);
@@ -140,6 +134,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   logger.info(`🚀 HRMS Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+  logger.info(`🔗 Local URL: http://localhost:${PORT}`);
 });
 
 module.exports = app;
