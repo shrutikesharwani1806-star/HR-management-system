@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { usePermission } from './context/usePermission'
+import Chatbot from './components/Chatbot'
 
 // Lazy load all routes for maximum bundle splitting
 const Landing = lazy(() => import('./pages/Landing'))
@@ -82,6 +83,7 @@ export default function App() {
           <Route path="/unauthorized" element={<Suspense fallback={<Spinner />}><Unauthorized /></Suspense>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Chatbot />
       </BrowserRouter>
     </AuthProvider>
   )
