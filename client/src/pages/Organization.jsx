@@ -14,6 +14,8 @@ export default function Organization() {
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({})
   const [error, setError] = useState('')
+  const [loadingGPS, setLoadingGPS] = useState(false)
+
 
   const fetchAll = async () => {
     setLoading(true)
@@ -50,6 +52,9 @@ export default function Organization() {
       { key: 'city', label: 'City' },
       { key: 'state', label: 'State' },
       { key: 'country', label: 'Country' },
+      { key: 'latitude', label: 'Latitude (Manual or GPS)', type: 'number' },
+      { key: 'longitude', label: 'Longitude (Manual or GPS)', type: 'number' },
+      { key: 'geofenceRadius', label: 'Tracking Radius (meters)', type: 'number' },
     ],
   }
 
@@ -91,6 +96,45 @@ export default function Organization() {
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to delete')
     }
+  }
+
+  const handleGPSLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser')
+      return
+    }
+    setLoadingGPS(true)
+    setError('')
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords
+        
+        // Reverse Geocoding using free Nominatim API
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+        const data = await res.json()
+        
+        const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || ''
+        const state = data.address?.state || ''
+        const country = data.address?.country || ''
+        
+        setForm(prev => ({
+          ...prev,
+          latitude: latitude.toFixed(6),
+          longitude: longitude.toFixed(6),
+          city,
+          state,
+          country,
+          geofenceRadius: prev.geofenceRadius || 100 // Default to 100 meters tracking radius
+        }))
+        setLoadingGPS(false)
+      } catch (err) {
+        setError('Failed to fetch address from GPS coordinates.')
+        setLoadingGPS(false)
+      }
+    }, (err) => {
+      setError(`GPS Error: ${err.message}`)
+      setLoadingGPS(false)
+    }, { enableHighAccuracy: true })
   }
 
   return (
@@ -149,17 +193,41 @@ export default function Organization() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="p-6 space-y-4">
-                {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">{error}</div>}
+                {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-lg">{error}</div>}
+                
+                {activeTab === 'locations' && (
+                  <div className="bg-sky-50 p-4 rounded-xl border border-sky-100 flex flex-col gap-2">
+                    <div className="text-xs font-semibold text-sky-800">
+                      Add location manually or use AI/GPS tracking to auto-detect coordinates and address like Swiggy.
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={handleGPSLocation} 
+                      disabled={loadingGPS} 
+                      className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-md shadow-sky-200"
+                    >
+                      {loadingGPS ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Tracking GPS...
+                        </>
+                      ) : (
+                        <>📍 Auto-Track Current GPS Location</>
+                      )}
+                    </button>
+                  </div>
+                )}
+
                 {(tabFields[activeTab] || []).map((f) => (
                    <div key={f.key} className="form-group">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">{f.label}{f.required ? ' *' : ''}</label>
-                    <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none transition-all" value={form[f.key] || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} required={f.required} />
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">{f.label}{f.required ? ' *' : ''}</label>
+                    <input type={f.type || 'text'} step={f.type === 'number' ? 'any' : undefined} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:border-indigo-400 outline-none transition-all" value={form[f.key] || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} required={f.required} />
                   </div>
                 ))}
               </div>
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-                <button type="button" className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors">{isEdit ? 'Save' : 'Create'}</button>
+                <button type="button" className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-colors">{isEdit ? 'Save Changes' : `Create ${activeTab.slice(0, -1)}`}</button>
               </div>
             </form>
           </div>

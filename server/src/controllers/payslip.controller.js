@@ -5,12 +5,13 @@ const { uploadMulterFile } = require('../services/storage.service');
 
 // ─── Create or Upload Payslip ─────────────────────────────────────────────
 exports.createPayslip = async (req, res) => {
-  const tenantId = req.tenantId;
-  const { employeeId, month, year, basicSalary, allowances, deductions, remarks, status = 'paid' } = req.body;
+  try {
+    const tenantId = req.tenantId;
+    const { employeeId, month, year, basicSalary, allowances, deductions, remarks, status = 'paid' } = req.body;
 
-  if (!employeeId || !month || !year) {
-    return res.status(400).json({ success: false, message: 'Employee ID, month, and year are required.' });
-  }
+    if (!employeeId || !month || !year) {
+      return res.status(400).json({ success: false, message: 'Employee ID, month, and year are required.' });
+    }
 
   // Ensure employee belongs to the current tenant
   const employee = await Employee.findOne({ _id: employeeId, tenantId });
@@ -25,8 +26,22 @@ exports.createPayslip = async (req, res) => {
   }
 
   const basic = parseFloat(basicSalary) || 0;
-  const allow = parseFloat(allowances) || 0;
-  const deduct = parseFloat(deductions) || 0;
+  
+  let allowanceBreakdown = [];
+  let deductionBreakdown = [];
+  try {
+    if (req.body.allowanceBreakdown) allowanceBreakdown = JSON.parse(req.body.allowanceBreakdown);
+    if (req.body.deductionBreakdown) deductionBreakdown = JSON.parse(req.body.deductionBreakdown);
+  } catch (e) {}
+
+  const allow = allowanceBreakdown.length > 0 
+    ? allowanceBreakdown.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
+    : parseFloat(allowances) || 0;
+    
+  const deduct = deductionBreakdown.length > 0
+    ? deductionBreakdown.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
+    : parseFloat(deductions) || 0;
+    
   const net = basic + allow - deduct;
 
   const payslip = await Payslip.create({
@@ -35,6 +50,8 @@ exports.createPayslip = async (req, res) => {
     month: parseInt(month),
     year: parseInt(year),
     basicSalary: basic,
+    allowanceBreakdown,
+    deductionBreakdown,
     allowances: allow,
     deductions: deduct,
     netSalary: net,
@@ -44,17 +61,21 @@ exports.createPayslip = async (req, res) => {
     remarks
   });
 
-  await AuditLog.create({
-    tenantId,
-    userId: req.user.id,
-    userEmail: req.user.email,
-    module: 'payroll',
-    action: 'upload_payslip',
-    details: `Uploaded payslip for employee ${employeeId} for period ${month}/${year}`,
-    ipAddress: req.ip,
-  });
+    await AuditLog.create({
+      tenantId,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      module: 'payroll',
+      action: 'upload_payslip',
+      details: `Uploaded payslip for employee ${employeeId} for period ${month}/${year}`,
+      ipAddress: req.ip,
+    });
 
-  res.status(201).json({ success: true, message: 'Payslip recorded and monthly payment set as done.', data: payslip });
+    res.status(201).json({ success: true, message: 'Payslip recorded and monthly payment set as done.', data: payslip });
+  } catch (err) {
+    console.error('Payslip Creation Error:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error: ' + err.message });
+  }
 };
 
 // ─── My Payslips (Employee View) ──────────────────────────────────────────

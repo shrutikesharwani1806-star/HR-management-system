@@ -270,9 +270,9 @@ exports.update = async (req, res) => {
 exports.uploadPhoto = async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
   const { key, url } = await uploadMulterFile(req.file, 'profiles', req.tenantId);
-  const emp = await Employee.findOneAndUpdate({ _id: req.params.id, tenantId: req.tenantId }, { photoUrl: key }, { new: true });
+  const emp = await Employee.findOneAndUpdate({ _id: req.params.id, tenantId: req.tenantId }, { photoUrl: url }, { new: true });
   if (!emp) return res.status(404).json({ success: false, message: 'Employee not found' });
-  res.json({ success: true, data: { photoUrl: key, signedUrl: url } });
+  res.json({ success: true, data: { photoUrl: url, signedUrl: url } });
 };
 
 exports.uploadDocument = async (req, res) => {

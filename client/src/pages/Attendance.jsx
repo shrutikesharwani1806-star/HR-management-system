@@ -305,10 +305,42 @@ export default function Attendance() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          {r.firstIn ? new Date(r.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                          {r.firstIn ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-slate-700">{new Date(r.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {(() => {
+                                const punchIn = r.punches?.find(p => p.type === 'in');
+                                if (punchIn?.latitude && punchIn?.longitude) {
+                                  return (
+                                    <a href={`https://www.google.com/maps?q=${punchIn.latitude},${punchIn.longitude}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 flex items-center gap-1 transition-colors">
+                                      📍 GPS Log
+                                    </a>
+                                  )
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          ) : '—'}
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          {r.lastOut ? new Date(r.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                          {r.lastOut ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-slate-700">{new Date(r.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {(() => {
+                                // Find the last out punch
+                                const outs = r.punches?.filter(p => p.type === 'out') || [];
+                                const punchOut = outs[outs.length - 1];
+                                if (punchOut?.latitude && punchOut?.longitude) {
+                                  return (
+                                    <a href={`https://www.google.com/maps?q=${punchOut.latitude},${punchOut.longitude}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 flex items-center gap-1 transition-colors">
+                                      📍 GPS Log
+                                    </a>
+                                  )
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          ) : '—'}
                         </td>
                         <td className="px-6 py-4 text-sm">
                           {r.workedMinutes ? `${Math.floor(r.workedMinutes / 60)}h ${r.workedMinutes % 60}m` : '—'}
@@ -443,10 +475,41 @@ export default function Attendance() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          {tr.attendance?.firstIn ? new Date(tr.attendance.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                          {tr.attendance?.firstIn ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-slate-700">{new Date(tr.attendance.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {(() => {
+                                const punchIn = tr.attendance.punches?.find(p => p.type === 'in');
+                                if (punchIn?.latitude && punchIn?.longitude) {
+                                  return (
+                                    <a href={`https://www.google.com/maps?q=${punchIn.latitude},${punchIn.longitude}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 flex items-center gap-1 transition-colors">
+                                      📍 GPS Log
+                                    </a>
+                                  )
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          ) : '—'}
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          {tr.attendance?.lastOut ? new Date(tr.attendance.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                          {tr.attendance?.lastOut ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-slate-700">{new Date(tr.attendance.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {(() => {
+                                const outs = tr.attendance.punches?.filter(p => p.type === 'out') || [];
+                                const punchOut = outs[outs.length - 1];
+                                if (punchOut?.latitude && punchOut?.longitude) {
+                                  return (
+                                    <a href={`https://www.google.com/maps?q=${punchOut.latitude},${punchOut.longitude}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 flex items-center gap-1 transition-colors">
+                                      📍 GPS Log
+                                    </a>
+                                  )
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          ) : '—'}
                         </td>
                         <td className="px-6 py-4 text-sm">
                           {tr.attendance?.workedMinutes ? `${Math.floor(tr.attendance.workedMinutes / 60)}h ${tr.attendance.workedMinutes % 60}m` : '—'}

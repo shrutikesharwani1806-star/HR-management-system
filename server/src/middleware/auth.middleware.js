@@ -41,6 +41,7 @@ const SYSTEM_ROLE_PERMISSIONS = {
     'role:create',
     'role:update',
     'role:delete',
+    'payroll:generate',
     'profile:read', 'profile:update', 'leave:read', 'attendance:read', 'report:read', 'team:read', 'organization:read', 'organization:update', 'user:manage', 'user:create', 'user:toggle', 'user:reset_password'
   ],
   hr_admin: ['*'],   // wildcard — all permissions

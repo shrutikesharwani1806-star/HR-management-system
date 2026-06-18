@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+import PayslipModal from '../components/PayslipModal'
 
 export default function Payslips() {
   const { user } = useAuth()
@@ -16,14 +17,17 @@ export default function Payslips() {
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     basicSalary: '',
-    allowances: '0',
-    deductions: '0',
     remarks: '',
   })
+  
+  const [allowanceBreakdown, setAllowanceBreakdown] = useState([])
+  const [deductionBreakdown, setDeductionBreakdown] = useState([])
   
   const [file, setFile] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  
+  const [viewPayslip, setViewPayslip] = useState(null)
 
   const canManage = ['leadership', 'hr_admin', 'super_admin'].includes(user?.role)
 
@@ -32,7 +36,6 @@ export default function Payslips() {
     setError('')
     try {
       if (canManage) {
-        // Fetch all payslips and employees list for selector
         const [payslipsRes, employeesRes] = await Promise.all([
           api.get('/payslips/all'),
           api.get('/employees?limit=200')
@@ -40,7 +43,6 @@ export default function Payslips() {
         setPayslips(payslipsRes.data.data)
         setEmployees(employeesRes.data.data)
       } else {
-        // Fetch only log-in user's payslips (completely isolated)
         const res = await api.get('/payslips/my')
         setPayslips(res.data.data)
       }
@@ -79,8 +81,8 @@ export default function Payslips() {
       formData.append('month', form.month)
       formData.append('year', form.year)
       formData.append('basicSalary', form.basicSalary)
-      formData.append('allowances', form.allowances)
-      formData.append('deductions', form.deductions)
+      formData.append('allowanceBreakdown', JSON.stringify(allowanceBreakdown))
+      formData.append('deductionBreakdown', JSON.stringify(deductionBreakdown))
       formData.append('remarks', form.remarks)
       formData.append('status', 'paid')
       if (file) {
@@ -97,16 +99,14 @@ export default function Payslips() {
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
         basicSalary: '',
-        allowances: '0',
-        deductions: '0',
         remarks: '',
       })
+      setAllowanceBreakdown([])
+      setDeductionBreakdown([])
       setFile(null)
-      // Reset input element
       const fileInput = document.getElementById('payslipFile')
       if (fileInput) fileInput.value = ''
       
-      // Refresh list
       fetchData()
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to record payslip.')
@@ -115,7 +115,6 @@ export default function Payslips() {
     }
   }
 
-  // Format month to name
   const getMonthName = (mNum) => {
     const date = new Date()
     date.setMonth(mNum - 1)
@@ -166,11 +165,7 @@ export default function Payslips() {
                   required
                 >
                   <option value="">Choose employee...</option>
-                  {employees.filter(e => {
-                    if (user?.role === 'leadership') return ['hr_admin', 'manager'].includes(e.userId?.role)
-                    if (user?.role === 'hr_admin') return ['employee', 'manager'].includes(e.userId?.role)
-                    return true
-                  }).map((e) => (
+                  {employees.map((e) => (
                     <option key={e._id} value={e._id}>
                       {e.firstName} {e.lastName} ({e.employeeId})
                     </option>
@@ -216,27 +211,34 @@ export default function Payslips() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Allowances</label>
-                  <input 
-                    type="number" 
-                    placeholder="0"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 outline-none focus:bg-white focus:border-violet-400"
-                    value={form.allowances}
-                    onChange={(e) => setForm({ ...form, allowances: e.target.value })}
-                  />
+              {/* Allowances Breakdown */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-[10px] font-black uppercase text-slate-500">Allowances</label>
+                  <button type="button" onClick={() => setAllowanceBreakdown([...allowanceBreakdown, { reason: '', amount: '' }])} className="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-0.5 rounded font-bold">+ Add</button>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Deductions</label>
-                  <input 
-                    type="number" 
-                    placeholder="0"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 outline-none focus:bg-white focus:border-violet-400"
-                    value={form.deductions}
-                    onChange={(e) => setForm({ ...form, deductions: e.target.value })}
-                  />
+                {allowanceBreakdown.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <input type="text" placeholder="Reason" className="w-1/2 px-2 py-1 text-xs border border-slate-200 rounded" value={item.reason} onChange={(e) => { const newArr = [...allowanceBreakdown]; newArr[idx].reason = e.target.value; setAllowanceBreakdown(newArr); }} />
+                    <input type="number" placeholder="Amt" className="w-1/3 px-2 py-1 text-xs border border-slate-200 rounded" value={item.amount} onChange={(e) => { const newArr = [...allowanceBreakdown]; newArr[idx].amount = e.target.value; setAllowanceBreakdown(newArr); }} />
+                    <button type="button" onClick={() => setAllowanceBreakdown(allowanceBreakdown.filter((_, i) => i !== idx))} className="text-rose-500 text-xs">❌</button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Deductions Breakdown */}
+              <div className="bg-rose-50 p-3 rounded-xl border border-rose-100">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-[10px] font-black uppercase text-rose-500">Deductions</label>
+                  <button type="button" onClick={() => setDeductionBreakdown([...deductionBreakdown, { reason: '', amount: '' }])} className="text-[10px] bg-rose-200 hover:bg-rose-300 text-rose-800 px-2 py-0.5 rounded font-bold">+ Add</button>
                 </div>
+                {deductionBreakdown.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <input type="text" placeholder="Why (e.g. Tax, Leave)" className="w-1/2 px-2 py-1 text-xs border border-rose-200 rounded" value={item.reason} onChange={(e) => { const newArr = [...deductionBreakdown]; newArr[idx].reason = e.target.value; setDeductionBreakdown(newArr); }} />
+                    <input type="number" placeholder="Amt" className="w-1/3 px-2 py-1 text-xs border border-rose-200 rounded" value={item.amount} onChange={(e) => { const newArr = [...deductionBreakdown]; newArr[idx].amount = e.target.value; setDeductionBreakdown(newArr); }} />
+                    <button type="button" onClick={() => setDeductionBreakdown(deductionBreakdown.filter((_, i) => i !== idx))} className="text-rose-500 text-xs">❌</button>
+                  </div>
+                ))}
               </div>
 
               <div>
@@ -266,7 +268,7 @@ export default function Payslips() {
                 disabled={uploading}
                 className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
-                {uploading ? 'Processing...' : 'Mark Paid & Upload Slip'}
+                {uploading ? 'Processing...' : 'Mark Paid & Issue Slip'}
               </button>
             </form>
           </div>
@@ -300,8 +302,8 @@ export default function Payslips() {
                     <th className="px-6 py-4 text-left">Period</th>
                     <th className="px-6 py-4 text-left">Basic Salary</th>
                     <th className="px-6 py-4 text-left">Net Salary</th>
-                    <th className="px-6 py-4 text-left">Payment Status</th>
-                    <th className="px-6 py-4 text-center">Payslip Link</th>
+                    <th className="px-6 py-4 text-left">Status</th>
+                    <th className="px-6 py-4 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700 text-xs font-medium">
@@ -329,19 +331,25 @@ export default function Payslips() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        {p.fileUrl ? (
-                          <a 
-                            href={p.fileUrl.startsWith('http') || p.fileUrl.startsWith('/') ? p.fileUrl : `/uploads/${p.fileUrl}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="inline-flex items-center gap-1 text-violet-650 hover:text-violet-800 hover:underline font-bold transition-all"
-                            download
+                        <div className="flex items-center justify-center gap-3">
+                          <button 
+                            onClick={() => setViewPayslip(p)}
+                            className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-bold transition-colors"
                           >
-                            ⬇️ Download Slip
-                          </a>
-                        ) : (
-                          <span className="text-slate-400 italic text-[11px]">No file attached</span>
-                        )}
+                            👁️ View
+                          </button>
+                          {p.fileUrl && (
+                            <a 
+                              href={p.fileUrl.startsWith('http') || p.fileUrl.startsWith('/') ? p.fileUrl : `/uploads/${p.fileUrl}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-800 font-bold transition-all"
+                              download
+                            >
+                              ⬇️ File
+                            </a>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -350,8 +358,11 @@ export default function Payslips() {
             </div>
           )}
         </div>
-
       </div>
+      
+      {viewPayslip && (
+        <PayslipModal payslip={viewPayslip} onClose={() => setViewPayslip(null)} />
+      )}
     </Layout>
   )
 }

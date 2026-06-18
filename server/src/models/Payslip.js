@@ -6,6 +6,8 @@ const payslipSchema = new mongoose.Schema({
   month: { type: Number, required: true }, // 1-12
   year: { type: Number, required: true },
   basicSalary: { type: Number, default: 0 },
+  allowanceBreakdown: [{ reason: String, amount: Number }],
+  deductionBreakdown: [{ reason: String, amount: Number }],
   allowances: { type: Number, default: 0 },
   deductions: { type: Number, default: 0 },
   netSalary: { type: Number, default: 0 },
